@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod test_data;
 
+use crate::flowset:: DataTemplateItem;
+
 use crate::error::NetFlowError;
 use crate::flowset::FlowSet;
 use crate::util::{take_u16, take_u32, u16_to_bytes, u32_to_bytes};
@@ -49,6 +51,31 @@ impl NetFlow9 {
             let (rest, flow_sequence) = take_u32(rest)?;
             let (rest, source_id) = take_u32(rest)?;
             let (_rest, flow_sets) = FlowSet::parse_bytes(rest)?;
+
+            Ok(NetFlow9 {
+                version,
+                count,
+                sys_uptime,
+                timestamp,
+                flow_sequence,
+                source_id,
+                flow_sets,
+            })
+        } else {
+            Err(NetFlowError::InvalidFieldValue)
+        }
+    }
+
+    pub fn from_bytes_with_templates(payload: &[u8], templates: &Vec<DataTemplateItem>) -> Result<Self, NetFlowError> {
+        let (rest, version) = take_u16(payload)?;
+
+        if version == 9 {
+            let (rest, count) = take_u16(rest)?;
+            let (rest, sys_uptime) = take_u32(rest)?;
+            let (rest, timestamp) = take_u32(rest)?;
+            let (rest, flow_sequence) = take_u32(rest)?;
+            let (rest, source_id) = take_u32(rest)?;
+            let (_rest, flow_sets) = FlowSet::parse_bytes_with_templates(rest, templates)?;
 
             Ok(NetFlow9 {
                 version,

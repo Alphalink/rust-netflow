@@ -49,6 +49,30 @@ impl FlowSet {
         }
     }
 
+    pub fn from_bytes_with_templates<'a>(data: &'a[u8], templates: &'a Vec<DataTemplateItem>) -> ParseResult<'a, FlowSet> {
+        let (_, id) = take_u16(&data)?;
+
+        info!("parsed flowset id: {:?}", id);
+
+        match id {
+            TEMPLATE_FLOWSET_ID => {
+                let (next, template) = DataTemplate::from_bytes(&data)?;
+                debug!("parsed DataTemplate: {:?}", template);
+                Ok((next, FlowSet::DataTemplate(template)))
+            }
+            OPTION_FLOWSET_ID => {
+                let (next, option) = OptionTemplate::from_bytes(&data)?;
+                debug!("parsed OptionTemplate: {:?}", option);
+                Ok((next, FlowSet::OptionTemplate(option)))
+            }
+            _ => {
+                let (next, flow) = DataFlow::from_bytes(&data, templates)?;
+                debug!("parsed DataFlow: {:?}", flow);
+                Ok((next, FlowSet::DataFlow(flow)))
+            }
+        }
+    }
+
     pub fn parse_bytes<'a>(data: &'a [u8]) -> ParseResult<'a, Vec<FlowSet>> {
         let mut rest = data;
         let mut sets: Vec<FlowSet> = Vec::new();
@@ -60,6 +84,24 @@ impl FlowSet {
         }
 
         // TODO: apply template?
+
+        Ok((rest, sets))
+    }
+
+    pub fn parse_bytes_with_templates<'a>(data: &'a [u8], templates: &'a Vec<DataTemplateItem>) -> ParseResult<'a, Vec<FlowSet>> {
+        let mut rest = data;
+        let mut sets: Vec<FlowSet> = Vec::new();
+
+        while !rest.is_empty() {
+            match FlowSet::from_bytes_with_templates(&rest, templates) {
+                Ok(val) => {
+                    let (next, flowset) = val;
+                    sets.push(flowset);
+                    rest = next;
+                },
+                _ => break // TODO Faire mieux que juste arrêter le traitement au milieu. Il reste des flows à suivre
+            }
+        }
 
         Ok((rest, sets))
     }

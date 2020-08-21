@@ -112,6 +112,13 @@ impl DataFlow {
         self.is_padding = is_padding;
     }
 
+    pub fn is_templated(&self) -> bool {
+        match self.records {
+            Some(_) => true,
+            None => false
+        }
+    }
+
     /// WARN: cannot remove padding without template data
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
