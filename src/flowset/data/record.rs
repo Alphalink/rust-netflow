@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use crate::field::FlowField;
+use crate::field::FieldValue;
 
 // TODO: need test
 
@@ -50,6 +53,16 @@ impl DataRecord {
         }
 
         bytes
+    }
+
+    pub fn access_hash(&self) -> HashMap<u16, FieldValue> {
+        let mut map = HashMap::new();
+
+        for field in &self.fields {
+            map.insert(field.type_id, field.value.clone());
+        }
+
+        return map;
     }
 
     #[allow(dead_code)]

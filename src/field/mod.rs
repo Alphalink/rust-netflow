@@ -32,9 +32,9 @@ use crate::error::{NetFlowError, ParseResult};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FlowField {
-    type_id: u16,
+    pub type_id: u16,
     length: u16,
-    value: FieldValue,
+    pub value: FieldValue,
 }
 
 impl FlowField {
