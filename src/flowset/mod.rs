@@ -11,8 +11,9 @@ mod data;
 pub use self::data::*;
 
 mod template_parser;
-use self::template_parser::*;
+pub use self::template_parser::*;
 
+use crate::error::NetFlowError;
 use crate::error::ParseResult;
 use crate::util::take_u16;
 
@@ -49,7 +50,13 @@ impl FlowSet {
         }
     }
 
-    pub fn from_bytes_with_templates<'a>(data: &'a[u8], templates: &'a Vec<DataTemplateItem>) -> ParseResult<'a, FlowSet> {
+    pub fn from_bytes_with_templates<'a, T>(
+        data: &'a [u8],
+        templates: &'a [T],
+    ) -> ParseResult<'a, FlowSet>
+    where
+        T: TemplateParser,
+    {
         let (_, id) = take_u16(&data)?;
 
         info!("parsed flowset id: {:?}", id);
@@ -88,7 +95,13 @@ impl FlowSet {
         Ok((rest, sets))
     }
 
-    pub fn parse_bytes_with_templates<'a>(data: &'a [u8], templates: &'a Vec<DataTemplateItem>) -> ParseResult<'a, Vec<FlowSet>> {
+    pub fn parse_bytes_with_templates<'a, T>(
+        data: &'a [u8],
+        templates: &'a [T],
+    ) -> ParseResult<'a, Vec<FlowSet>>
+    where
+        T: TemplateParser,
+    {
         let mut rest = data;
         let mut sets: Vec<FlowSet> = Vec::new();
 
@@ -98,8 +111,18 @@ impl FlowSet {
                     let (next, flowset) = val;
                     sets.push(flowset);
                     rest = next;
-                },
-                _ => break // TODO Faire mieux que juste arrêter le traitement au milieu. Il reste des flows à suivre
+                }
+                Err(NetFlowError::TemplateNotFound) => {
+                    // Fallback to parsing without template
+                    // We dont want to miss remaining flows after this one.
+                    // These flows without template have a None value for `records`
+                    FlowSet::from_bytes(&rest).map(|val| {
+                        let (next, flowset) = val;
+                        sets.push(flowset);
+                        rest = next;
+                    })?;
+                }
+                Err(e) => return Err(e),
             }
         }
 

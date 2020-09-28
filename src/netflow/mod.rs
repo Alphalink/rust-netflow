@@ -1,10 +1,10 @@
+use std::collections::HashMap;
+
 #[cfg(test)]
 mod test_data;
 
-use crate::flowset:: DataTemplateItem;
-
 use crate::error::NetFlowError;
-use crate::flowset::FlowSet;
+use crate::flowset::{FlowSet, TemplateParser};
 use crate::util::{take_u16, take_u32, u16_to_bytes, u32_to_bytes};
 
 // Netflow V9 -> Header + (Template* Option* Data*)
@@ -66,7 +66,14 @@ impl NetFlow9 {
         }
     }
 
-    pub fn from_bytes_with_templates(payload: &[u8], templates: &Vec<DataTemplateItem>) -> Result<Self, NetFlowError> {
+    /// Templates
+    pub fn from_bytes_with_templates<T>(
+        payload: &[u8],
+        templates: &HashMap<u32, Vec<T>>,
+    ) -> Result<Self, NetFlowError>
+    where
+        T: TemplateParser,
+    {
         let (rest, version) = take_u16(payload)?;
 
         if version == 9 {
@@ -75,7 +82,11 @@ impl NetFlow9 {
             let (rest, timestamp) = take_u32(rest)?;
             let (rest, flow_sequence) = take_u32(rest)?;
             let (rest, source_id) = take_u32(rest)?;
-            let (_rest, flow_sets) = FlowSet::parse_bytes_with_templates(rest, templates)?;
+
+            let (_rest, flow_sets) = FlowSet::parse_bytes_with_templates(
+                rest,
+                templates.get(&source_id).unwrap_or(&vec![]),
+            )?;
 
             Ok(NetFlow9 {
                 version,

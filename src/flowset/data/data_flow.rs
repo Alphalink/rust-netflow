@@ -34,8 +34,24 @@ impl DataFlow {
         }
     }
 
+    pub fn check_flow_size(data: &[u8]) -> Result<(), NetFlowError> {
+        if data.len() < 4 {
+            return Err(NetFlowError::InvalidLength);
+        }
+
+        let (rest, _) = take_u16(&data)?;
+        let (_, length) = take_u16(&rest)?;
+
+        if data.len() < length as usize {
+            return Err(NetFlowError::InvalidLength);
+        }
+
+        Ok(())
+    }
+
     pub fn from_bytes_notemplate(data: &[u8]) -> ParseResult<DataFlow> {
         debug!("Length of parsing data: {}", data.len());
+        DataFlow::check_flow_size(data)?;
 
         let (rest, flowset_id) = take_u16(&data)?;
         let (rest, length) = take_u16(&rest)?;
@@ -68,6 +84,8 @@ impl DataFlow {
         T: TemplateParser,
     {
         debug!("Length of parsing data: {}", data.len());
+        DataFlow::check_flow_size(data)?;
+
         let (rest, flowset_id) = take_u16(&data)?;
         let (rest, length) = take_u16(&rest)?;
 
@@ -115,7 +133,7 @@ impl DataFlow {
     pub fn is_templated(&self) -> bool {
         match self.records {
             Some(_) => true,
-            None => false
+            None => false,
         }
     }
 
